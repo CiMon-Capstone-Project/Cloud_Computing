@@ -183,6 +183,8 @@ app.post('/upload', verifyToken, upload.single('gambar'), async (req, res)=> {
             description = "Ini deskripsi cabe merah"
         } else if (title.toLowerCase() === 'CABE HIJAU' ) {
             description = "Ini deskripsi cabe hijau"
+        } else {
+            description = "Deskripsi tidak tersedia";
         }
 
         const query = `INSERT INTO images (user_id, image_url, title, description) VALUES (?, ?, ?, ?)`
@@ -211,7 +213,37 @@ app.post('/upload', verifyToken, upload.single('gambar'), async (req, res)=> {
 })
 
 //get gambar
+app.get("/images", verifyToken, async (req,res) => {
+    const { title } = req.query
+    const user_id = req.user.uid
 
+    if(!title) {
+        console.log("eRROR =", err)
+        return res.status(400).json({ status: 'error', message: 'title harus diisi'})
+    }
+
+    const query = `SELECT image_url, title, description FROM images WHERE user_id = ? AND title = ?`
+    db.query(query, [user_id, title], (err, result) => {
+        if(err) {
+            console.log("eRROR =", err)
+            return res.status(400).json({ status: 'error', message: 'gagal menampilkan data'})
+        }
+
+        if(result.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'gada gambar nya bang'
+            })
+        }
+
+        res.status(200).json({
+            status: "success",
+            message: "berhasil menampilkan gambar",
+            data: result
+        })
+    })
+
+})
 
 app.listen(3000, ()=> {
     console.log("Server berjalan di port 3000")
