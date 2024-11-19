@@ -1,5 +1,6 @@
 const mysql = require('mysql');
 
+// Konfigurasi koneksi ke MySQL
 const connection = {
     host: "localhost",
     user: "root",
@@ -21,22 +22,12 @@ CREATE TABLE IF NOT EXISTS images (
 );
 `;
 
-// Koneksi ke database
-db.getConnection((err, connection) => {
+db.query(createTable, (err, result) => {
     if (err) {
-        console.error('Error connecting to the database:', err);
-        return;
+        console.error('Error creating table:', err);
+    } else {
+        console.log('Table "images" created or already exists');
     }
-    console.log("Database Connected");
-
-    connection.query(createTable, (err, result) => {
-        if (err) {
-            console.error('Error creating table:', err);
-        } else {
-            console.log('Table created successfully');
-        }
-        connection.release();
-    });
 });
 
 module.exports = { db, createTable };

@@ -1,7 +1,9 @@
 const express = require('express');
-const { db, createTable }  = require ('./database/db');
+const { db, createTable }= require ('./database/db');
 const axios = require('axios');
+const multer = require('multer')
 var admin = require("firebase-admin");
+
 
 var serviceAccount = require("./serviceAccountKey.json");
 
@@ -13,6 +15,18 @@ admin.initializeApp({
 const app = express();
 
 app.use(express.json())
+
+//setup multer
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'uploads/');
+    },
+    filename: function (req, file, cb) {
+      cb(null, Date.now() + path.extname(file.originalname));
+    }
+  });
+  
+const upload = multer({ storage: storage });
 
 const verifyToken = async (req, res, next) => {
     try {
