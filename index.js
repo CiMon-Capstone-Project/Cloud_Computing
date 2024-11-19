@@ -2,10 +2,12 @@ const express = require('express');
 const { db, createTable }= require ('./database/db');
 const axios = require('axios');
 const multer = require('multer')
+const path = require('path');
 var admin = require("firebase-admin");
 
 
 var serviceAccount = require("./serviceAccountKey.json");
+const { status } = require('@grpc/grpc-js');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -159,6 +161,57 @@ app.post('/login', async (req, res) => {
         });
     }
 });
+
+//upload gambar 
+app.post('/upload', verifyToken, upload.single('gambar'), async (req, res)=> {
+    try {
+        if(!req.file) {
+            return res.status(400).json({ status:"Error", message: "Tidak ada file gambar yang di unggah"})
+        }
+        const { imageUrl, title } = req.body;
+        const user_id = req.user.uid
+        
+        if (!imageUrl || !title) {
+            return res.status(400).json({
+                status: "Error",
+                message: "gambar dan judul dibutuhkan"
+            })
+        }
+
+        let description = '';
+        if(title.toLowerCase() === 'CABE MERAH' ) {
+            description = "Ini deskripsi cabe merah"
+        } else if (title.toLowerCase() === 'CABE HIJAU' ) {
+            description = "Ini deskripsi cabe hijau"
+        }
+
+        const query = `INSERT INTO images (user_id, image_url, title, description) VALUES (?, ?, ?, ?)`
+        db.query (query, [user_id, imageUrl, title, description], (err, result) => {
+            if(err) {
+                console.log("Error :", err)
+                return res.status(400).json({ status: "error", message: "Error menambahkan gambar"})
+            }
+
+            res.status(201).json({
+                status: "success",
+                message: "Berhasil menambahkan gambar",
+                data: {
+                    user_id,
+                    imageUrl,
+                    title,
+                    description
+                }
+            })
+        })
+
+    } catch (error) {
+        console.error('Error retrieving images:', error);
+        res.status(500).json({ status: 'error', message: 'Internal server error' });
+    }
+})
+
+//get gambar
+
 
 app.listen(3000, ()=> {
     console.log("Server berjalan di port 3000")
