@@ -30,4 +30,4 @@ db.query(createTable, (err, result) => {
     }
 });
 
-module.exports = { db, createTable };
+module.exports = db;
