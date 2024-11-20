@@ -38,6 +38,7 @@ const upload = multer({ storage: storage });
 const verifyToken = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split('Bearer ')[1];
+        // console.log("Token diterima:", token);
         if (!token) {
             return res.status(401).json({ 
               status: 'error',
@@ -169,7 +170,6 @@ app.post('/login', async (req, res) => {
     }
 });
 
-//upload gambar 
 // Upload gambar ke local storage sekaligus ke database
 app.post('/upload', verifyToken, upload.single('gambar'), async (req, res) => {
     try {
@@ -271,6 +271,34 @@ app.get("/images", verifyToken, async (req,res) => {
         })
     })
 
+})
+
+//history 
+app.get('/history', verifyToken, (req, res)=> {
+    const user_id = req.user.uid
+    if(!user_id) {
+        console.log("User ID tidak ditemukan")
+        return res.status(400).json({ status: 'error', message: 'masukkan user id'})
+    }
+
+    const query = `SELECT image_url, title, description FROM images WHERE user_id = ?`
+    db.query(query, [user_id], (err, result)=> {
+        if(err) {
+            console.log(err)
+            return res.status(400).json({ status: 'error', message: 'gagal menampilkan data'})
+        }
+
+        if(result.length === 0) {
+            console.log("Data tidak ditemukan untuk user_id:", user_id);
+            return res.status(404).json({ status: 'error', message: 'Data tidak ditemukan' });
+        }
+
+        res.status(200).json({
+            status: "success",
+            message: "berhasil menampilkan data",
+            data: result
+        })
+    })
 })
 
 app.listen(3000, ()=> {
