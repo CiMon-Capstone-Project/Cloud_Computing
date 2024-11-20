@@ -7,8 +7,6 @@ var admin = require("firebase-admin");
 
 
 var serviceAccount = require("./serviceAccountKey.json");
-const { status } = require('@grpc/grpc-js');
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
@@ -17,6 +15,13 @@ admin.initializeApp({
 const app = express();
 
 app.use(express.json())
+
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
 
 //setup multer
 const storage = multer.diskStorage({
@@ -49,6 +54,7 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
+//register
 app.post('/register', async (req, res) => {
     try {
         const user = req.body;
@@ -88,6 +94,7 @@ app.post('/register', async (req, res) => {
     }
 });
 
+//login
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -163,54 +170,75 @@ app.post('/login', async (req, res) => {
 });
 
 //upload gambar 
-app.post('/upload', verifyToken, upload.single('gambar'), async (req, res)=> {
+// Upload gambar ke local storage sekaligus ke database
+app.post('/upload', verifyToken, upload.single('gambar'), async (req, res) => {
     try {
-        if(!req.file) {
-            return res.status(400).json({ status:"Error", message: "Tidak ada file gambar yang di unggah"})
-        }
-        const { imageUrl, title } = req.body;
-        const user_id = req.user.uid
-        
-        if (!imageUrl || !title) {
-            return res.status(400).json({
-                status: "Error",
-                message: "gambar dan judul dibutuhkan"
-            })
+        // Periksa apakah file sudah diunggah
+        if (!req.file) {
+            return res.status(400).json({ 
+                status: "error", 
+                message: "Tidak ada file gambar yang diunggah" 
+            });
         }
 
+        const { title } = req.body;
+        const file = req.file;
+        const user_id = req.user.uid; // Mendapatkan UID user dari token
+        
+        // Validasi jika title kosong
+        if (!title) {
+            return res.status(400).json({
+                status: "error",
+                message: "Judul dibutuhkan"
+            });
+        }
+
+        // Menentukan deskripsi berdasarkan title
         let description = '';
-        if(title.toLowerCase() === 'CABE MERAH' ) {
-            description = "Ini deskripsi cabe merah"
-        } else if (title.toLowerCase() === 'CABE HIJAU' ) {
-            description = "Ini deskripsi cabe hijau"
+        if (title.toLowerCase() === 'cabe merah') {
+            description = "Ini deskripsi cabe merah";
+        } else if (title.toLowerCase() === 'cabe hijau') {
+            description = "Ini deskripsi cabe hijau";
         } else {
             description = "Deskripsi tidak tersedia";
         }
 
-        const query = `INSERT INTO images (user_id, image_url, title, description) VALUES (?, ?, ?, ?)`
-        db.query (query, [user_id, imageUrl, title, description], (err, result) => {
-            if(err) {
-                console.log("Error :", err)
-                return res.status(400).json({ status: "error", message: "Error menambahkan gambar"})
+        // Menentukan URL lokal tempat file tersimpan
+        const imageUrl = `uploads/${file.filename}`;
+
+        // Simpan metadata gambar ke database
+        const query = `INSERT INTO images (user_id, image_url, title, description) VALUES (?, ?, ?, ?)`;
+        db.query(query, [user_id, imageUrl, title, description], (err, result) => {
+            if (err) {
+                console.log("Error:", err);
+                return res.status(400).json({ 
+                    status: "error", 
+                    message: "Error menambahkan metadata gambar ke database" 
+                });
             }
 
+            // Kirimkan response berhasil
             res.status(201).json({
                 status: "success",
-                message: "Berhasil menambahkan gambar",
+                message: "Berhasil mengunggah gambar",
                 data: {
                     user_id,
-                    imageUrl,
+                    image_url: imageUrl,
                     title,
                     description
                 }
-            })
-        })
+            });
+        });
 
     } catch (error) {
-        console.error('Error retrieving images:', error);
-        res.status(500).json({ status: 'error', message: 'Internal server error' });
+        console.error('Error uploading image:', error);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Internal server error' 
+        });
     }
-})
+});
+
 
 //get gambar
 app.get("/images", verifyToken, async (req,res) => {
