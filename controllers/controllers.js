@@ -1,5 +1,4 @@
 const db = require('../database/db');
-// const { storage, upload } = require('../storage/multer');
 
 const uploadImage = async (req, res) => {
     try {
